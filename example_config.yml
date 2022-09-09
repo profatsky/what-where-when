@@ -1,0 +1,16 @@
+session:
+  key:
+admin:
+  email: admin@admin.com
+  password: admin
+database:
+  host:
+  port:
+  user:
+  password:
+  database:
+bot:
+  token:
+  group_id:
+
+
