@@ -1,10 +1,11 @@
 from typing import Optional
 
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import select, update, delete
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import joinedload, subqueryload
 
-from app.game.models import Question, Answer, QuestionModel, AnswerModel, Game, GameModel, User, UserModel, games_users, \
-    Chat, ChatModel
+from app.game.dataclasses import Question, Answer, Game, User, Chat
+from app.game.models import QuestionModel, AnswerModel, GameModel, UserModel, ChatModel
 from app.base.base_accessor import BaseAccessor
 
 
@@ -75,7 +76,7 @@ class GameAccessor(BaseAccessor):
         query = select(QuestionModel)
         if question_id:
             query = query.where(QuestionModel.id == int(question_id))
-        if is_approved is not None:
+        if is_approved:
             is_approved = True if is_approved == "true" else False
             query = query.where(QuestionModel.is_approved == is_approved)
         async with self.app.database.session() as session:
@@ -100,10 +101,19 @@ class GameAccessor(BaseAccessor):
                 .where(QuestionModel.id == id_)
             )
 
-    async def get_games_list(self, game_id: int) -> list[Game] | None:
+    async def get_games_list(
+            self,
+            game_id: int = None,
+            chat_id: int = None,
+            is_finished: bool = None
+    ) -> list[Game] | None:
         query = select(GameModel)
         if game_id:
             query = query.where(GameModel.id == int(game_id))
+        if chat_id:
+            query = query.where(GameModel.chat_id == int(chat_id))
+        if is_finished:
+            query = query.where(GameModel.is_finished == is_finished)
         async with self.app.database.session() as session:
             result = await session.execute(
                 query
@@ -126,10 +136,12 @@ class GameAccessor(BaseAccessor):
         users_list = [user.to_dc() for user in result.scalars().all()]
         return users_list
 
-    async def get_chats_list(self, chat_id: int) -> list[Chat] | None:
+    async def get_chats_list(self, chat_id: int = None, vk_id: int = None) -> list[Chat] | None:
         query = select(ChatModel)
         if chat_id:
             query = query.where(ChatModel.id == int(chat_id))
+        if vk_id:
+            query = query.where(ChatModel.vk_id == int(vk_id))
         async with self.app.database.session() as session:
             result = await session.execute(
                 query
