@@ -1,18 +1,22 @@
 from marshmallow import Schema, fields
 
 
+class AnswerSchema(Schema):
+    title = fields.Str(required=True)
+
+
 class QuestionSchema(Schema):
     id = fields.Int(required=False)
     title = fields.Str(required=True)
     answer_desc = fields.Str(required=True)
     author_id = fields.Str(required=False)
-    is_approved = fields.Boolean(required=False)
-    answers = fields.Nested("AnswerSchema", many=True, required=True)
+    is_approved = fields.Bool(required=False)
+    answers = fields.Nested(AnswerSchema, many=True, required=True)
 
 
 class QuestionSimpleSchema(Schema):
     id = fields.Int(required=False)
-    is_approved = fields.Boolean(required=False)
+    is_approved = fields.Bool(required=False)
 
 
 class QuestionIdSchema(Schema):
@@ -20,11 +24,20 @@ class QuestionIdSchema(Schema):
 
 
 class ListQuestionSchema(Schema):
-    questions = fields.Nested("QuestionSchema", many=True)
+    questions = fields.Nested(QuestionSchema, many=True)
 
 
-class AnswerSchema(Schema):
-    title = fields.Str(required=True)
+class UserSchema(Schema):
+    id = fields.Int(required=True)
+    vk_id = fields.Int(required=True)
+
+
+class UserIdSchema(Schema):
+    id = fields.Int(required=False)
+
+
+class ListUserSchema(Schema):
+    users = fields.Nested(UserSchema, many=True)
 
 
 class GameIdSchema(Schema):
@@ -38,25 +51,12 @@ class GameSchema(Schema):
     bot_score = fields.Int(required=True)
     players_score = fields.Int(required=True)
     is_finished = fields.Int(required=True)
-    questions = fields.Nested("QuestionSchema", many=True)
-    players = fields.Nested("UserSchema", many=True)
+    questions = fields.Nested(QuestionSchema, many=True)
+    players = fields.Nested(UserSchema, many=True)
 
 
 class ListGameSchema(Schema):
-    games = fields.Nested("GameSchema", many=True)
-
-
-class UserSchema(Schema):
-    id = fields.Int(required=True)
-    vk_id = fields.Int(required=True)
-
-
-class UserIdSchema(Schema):
-    id = fields.Int(required=False)
-
-
-class ListUserSchema(Schema):
-    users = fields.Nested("UserSchema", many=True)
+    games = fields.Nested(GameSchema, many=True)
 
 
 class ChatIdSchema(Schema):
@@ -69,4 +69,4 @@ class ChatSchema(Schema):
 
 
 class ChatListSchema(Schema):
-    chats = fields.Nested("ChatSchema", many=True)
+    chats = fields.Nested(ChatSchema, many=True)
