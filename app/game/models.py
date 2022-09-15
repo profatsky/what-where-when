@@ -1,49 +1,8 @@
-from dataclasses import dataclass
-from typing import Optional
-
 from sqlalchemy import Table, Column, String, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
+from app.game.dataclasses import Game, Chat, User, Question, Answer
 from app.store.database.sqlalchemy_base import db
-
-
-@dataclass
-class Question:
-    id: int
-    title: str
-    answer_desc: str
-    answers: list["Answer"]
-    is_approved: bool
-    author_id: Optional[int]
-
-
-@dataclass
-class Answer:
-    title: int
-
-
-@dataclass
-class User:
-    id: int
-    vk_id: int
-
-
-@dataclass
-class Game:
-    id: int
-    chat_id: int
-    capitan_id: int
-    bot_score: int
-    players_score: int
-    is_finished: bool
-    questions: list["Question"]
-    players: list["User"]
-
-
-@dataclass
-class Chat:
-    id: int
-    vk_id: int
 
 
 class QuestionModel(db):
@@ -51,7 +10,7 @@ class QuestionModel(db):
     id = Column(Integer, primary_key=True)
     title = Column(String, unique=True, nullable=False)
     answer_desc = Column(String, nullable=False)
-    author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_approved = Column(Boolean, default=False, nullable=False)
     answers = relationship("AnswerModel")
 
@@ -70,7 +29,7 @@ class AnswerModel(db):
     __tablename__ = "answers"
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=False)
-    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False, index=True)
 
     def to_dc(self):
         return Answer(
@@ -81,8 +40,8 @@ class AnswerModel(db):
 class GameModel(db):
     __tablename__ = "games"
     id = Column(Integer, primary_key=True)
-    chat_id = Column(Integer, ForeignKey("chats.id", ondelete="CASCADE"), nullable=False)
-    capitan_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    chat_id = Column(Integer, ForeignKey("chats.id", ondelete="CASCADE"), nullable=False, index=True)
+    capitan_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True)
     bot_score = Column(Integer, default=0, nullable=False)
     players_score = Column(Integer, default=0, nullable=False)
     is_finished = Column(Boolean, default=False, nullable=False)
@@ -111,7 +70,7 @@ class GameModel(db):
 class ChatModel(db):
     __tablename__ = "chats"
     id = Column(Integer, primary_key=True)
-    vk_id = Column(Integer, nullable=False)
+    vk_id = Column(Integer, nullable=False, unique=True)
 
     def to_dc(self):
         return Chat(
@@ -123,7 +82,7 @@ class ChatModel(db):
 class UserModel(db):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
-    vk_id = Column(Integer, nullable=False)
+    vk_id = Column(Integer, nullable=False, unique=True)
     authored_questions = relationship(
         "QuestionModel",
         primaryjoin="and_(UserModel.id == QuestionModel.author_id, "
