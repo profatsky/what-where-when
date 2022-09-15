@@ -14,14 +14,15 @@ class QuestionAddView(AuthRequiredMixin, View):
     @request_schema(QuestionSchema)
     @response_schema(QuestionSchema, 200)
     async def post(self):
-        if not len(self.data["answers"]):
+        if not self.data["answers"]:
             raise HTTPBadRequest(reason="answers not listed")
 
-        if await self.store.game.get_question_by_title(self.data["title"]):
+        title = self.data["title"]
+        if await self.store.game.get_question_by_title(title):
             raise HTTPConflict(reason="This question already exists")
 
         question = await self.store.game.create_question(
-            title=self.data["title"],
+            title=title,
             answer_desc=self.data["answer_desc"],
             author_id=self.data.get("author_id"),
             is_approved=self.data.get("is_approved", False),
@@ -40,7 +41,7 @@ class QuestionListView(AuthRequiredMixin, View):
     @response_schema(ListQuestionSchema, 200)
     async def get(self):
         query = self.request.query
-        questions = await self.store.game.get_questions_list(query.get("id"), query.get("is_approved", None))
+        questions = await self.store.game.get_questions_list(query.get("id"), query.get("is_approved"))
         return json_response(ListQuestionSchema().dump({"questions": questions}))
 
 
