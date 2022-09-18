@@ -28,8 +28,12 @@ class Game:
     id: int
     chat_id: int
     capitan_id: int
+    respondent_id: int
+    current_question: int
+    question_time: str
     bot_score: int
     players_score: int
+    is_started: bool
     is_finished: bool
     questions: list["Question"]
     players: list["User"]
