@@ -1,4 +1,4 @@
-from sqlalchemy import Table, Column, String, Integer, ForeignKey, Boolean
+from sqlalchemy import Table, Column, String, Integer, ForeignKey, Boolean, TIMESTAMP
 from sqlalchemy.orm import relationship
 
 from app.game.dataclasses import Game, Chat, User, Question, Answer
@@ -42,8 +42,12 @@ class GameModel(db):
     id = Column(Integer, primary_key=True)
     chat_id = Column(Integer, ForeignKey("chats.id", ondelete="CASCADE"), nullable=False, index=True)
     capitan_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True)
+    current_question = Column(Integer, ForeignKey("questions.id", ondelete="SET NULL"), nullable=True, index=True)
+    respondent_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True)
+    question_time = Column(TIMESTAMP, nullable=True)
     bot_score = Column(Integer, default=0, nullable=False)
     players_score = Column(Integer, default=0, nullable=False)
+    is_started = Column(Boolean, default=False, nullable=False)
     is_finished = Column(Boolean, default=False, nullable=False)
     questions = relationship(
         "QuestionModel",
@@ -59,8 +63,12 @@ class GameModel(db):
             id=self.id,
             chat_id=self.chat_id,
             capitan_id=self.capitan_id,
+            respondent_id=self.respondent_id,
+            current_question=self.current_question,
+            question_time=self.question_time,
             bot_score=self.bot_score,
             players_score=self.players_score,
+            is_started=self.is_started,
             is_finished=self.is_finished,
             questions=self.questions,
             players=self.players
