@@ -34,8 +34,9 @@ class BotManager:
                 )
 
             if update.object.event_type in (
-                    "invite_bot", "start_game", "join_game", "try_start_game",
-                    "players_ready", "try_players_ready", "tag_user", "answer"
+                    "invite_bot", "start_game", "join_game", "try_join_game",
+                    "try_start_game", "players_ready", "try_players_ready",
+                    "tag_user", "answer"
             ):
                 msg = update.object.body
                 await self.app.store.vk_api.send_message(

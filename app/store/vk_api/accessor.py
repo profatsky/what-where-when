@@ -172,7 +172,10 @@ class VkApiAccessor(BaseAccessor):
                         # Выбор отвечающего
                         elif fullmatch(r"\[id\d+\|.+]", message_text):
                             event_type = "tag_user"
-                            if (await self.app.store.game.get_capitan(peer_id)).vk_id != from_id:
+                            capitan = await self.app.store.game.get_capitan(peer_id)
+                            if not capitan:
+                                event_type = None
+                            elif capitan.vk_id != from_id:
                                 body = "❗ Вы не можете выбрать отвечающего, т.к. не являетесь капитаном команды!"
                             elif not await self.app.store.game.choose_respondent(
                                 vk_chat_id=peer_id,
@@ -264,7 +267,8 @@ class VkApiAccessor(BaseAccessor):
                                 is_started=False,
                                 is_finished=False
                             ):
-                                body = "Сперва начните игру - /start"
+                                event_type = "try_join_game"
+                                body = "❗ Нельзя присоединится к игре в данный момент"
                             else:
                                 await self.app.store.game.add_new_user(
                                     vk_id=from_id

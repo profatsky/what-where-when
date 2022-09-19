@@ -217,12 +217,14 @@ class GameAccessor(BaseAccessor):
             )
         return user
 
-    async def get_capitan(self, vk_chat_id: int) -> User:
+    async def get_capitan(self, vk_chat_id: int) -> User | None:
         game: Game = await self.get_game_by_vk_id(
             vk_chat_id,
             is_started=True,
             is_finished=False
         )
+        if not game:
+            return
         user: User = (await self.get_users_list(user_id=game.capitan_id))[0]
         return user
 
