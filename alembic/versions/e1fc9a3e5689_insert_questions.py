@@ -63,7 +63,8 @@ def upgrade() -> None:
             answers=[
                 AnswerModel(title="над фруктовой лавкой"), AnswerModel(title="лавка с фруктами"),
                 AnswerModel(title="над лавкой с фруктами"), AnswerModel(title="лавка с фруктами"),
-                AnswerModel(title="с фруктами"), AnswerModel(title="фруктовой лавкой")
+                AnswerModel(title="с фруктами"), AnswerModel(title="фруктовой лавкой"),
+                AnswerModel(title="фруктовая лавка")
             ],
             is_approved=True
         ),
@@ -79,7 +80,7 @@ def upgrade() -> None:
         QuestionModel(
             title="Что, согласно старинной арабской мудрости, порождают сплошные солнечные дни?",
             answer_desc="Пустыню.",
-            answers=[AnswerModel(title="пустыню")],
+            answers=[AnswerModel(title="пустыню"), AnswerModel(title="пустыни")],
             is_approved=True
         ),
         QuestionModel(
@@ -104,7 +105,7 @@ def upgrade() -> None:
         ),
         QuestionModel(
             title="В брюхе баня, в носу решето, на голове пупок, одна рука, да и та на спине. Что это?",
-            answer_desc="Паровоз",
+            answer_desc="Чайник",
             answers=[AnswerModel(title="чайник")],
             is_approved=True
         ),
