@@ -2,13 +2,16 @@ import json
 import random
 import typing
 from datetime import datetime
+from io import BytesIO
 from re import fullmatch
 from typing import Optional
 
+import requests
 from aiohttp import TCPConnector
 from aiohttp.client import ClientSession
 
 from app.base.base_accessor import BaseAccessor
+from app.store.bot.image_app import create_image
 from app.store.vk_api.dataclasses import Message, Update, UpdateObject
 from app.store.vk_api.poller import Poller
 from app.store.vk_api.schemes import KeyboardSchema
@@ -152,18 +155,19 @@ class VkApiAccessor(BaseAccessor):
                                              f"{info['last_name']}]%0A%0A"
                                              f"⏱ В течение 1.5 минуты после каждого вопроса, он должен выбрать "
                                              f"(через обращение @) того, кто отвечает",
-                                        keyboard=None
+                                        keyboard=None,
+                                        attachment=None
                                     )
                                 )
 
                                 question = await self.app.store.game.get_question_for_game(
                                     vk_chat_id=peer_id
                                 )
-                                body = f"❓ Внимание! Вопрос: {question.title}%0A%0A" \
-                                       f"❗ У вас есть 1 минута на обсуждение и 30 секунд на ответ. " \
-                                       f"Отвечает игрок, которого выберет капитан%0A%0A" \
-                                       f"💬 Формат ответа: /answer <ответ>"
-
+                                body = f"{question.title}"
+                                author = await self.app.store.game.get_author(question)
+                                if author:
+                                    info = (await self.app.store.vk_api.get_users_info(author.vk_id))[0]
+                                    body += f"|{info['first_name']} {info['last_name']}"
                             else:
                                 event_type = "try_players_ready"
 
@@ -187,8 +191,7 @@ class VkApiAccessor(BaseAccessor):
 
                         # Ответ на вопрос
                         elif fullmatch(r"/answer .+", message_text):
-                            event_type = "answer"
-
+                            event_type = "players_answer"
                             respondent = await self.app.store.game.get_respondent(
                                 vk_chat_id=peer_id
                             )
@@ -213,34 +216,54 @@ class VkApiAccessor(BaseAccessor):
                                         vk_chat_id=peer_id,
                                         players_side=False
                                     )
-
                                 elif message_text[8:].lower() in answers:
-                                    body = f"✔ Это правильный ответ!%0A%0A"
-
                                     game = await self.app.store.game.add_score(
                                         vk_chat_id=peer_id,
                                         players_side=True
                                     )
 
-                                else:
-                                    body = f"❌ Это неправильный ответ!%0A%0A"
+                                    body = "✔ Это правильный ответ!%0A%0A"
 
+                                else:
                                     game = await self.app.store.game.add_score(
                                         vk_chat_id=peer_id,
                                         players_side=False
                                     )
-                                body += f"✨ {question.answer_desc}%0A%0A" \
-                                        f"🙋‍♂️Ваша команда {game.players_score} : 🤖 Бот {game.bot_score}"
 
-                                await self.app.store.vk_api.send_message(
-                                    Message(
-                                        peer_id=peer_id,
-                                        text=body,
-                                        keyboard=None
+                                    body = "❌ Это неправильный ответ!%0A%0A"
+
+                                body += f"🙋‍♂️Ваша команда {game.players_score} : 🤖 Бот {game.bot_score}"
+
+                                updates.append(
+                                    Update(
+                                        type=update['type'],
+                                        object=UpdateObject(
+                                            id=update['object']['message']['id'],
+                                            user_id=from_id,
+                                            peer_id=peer_id,
+                                            body=body,
+                                            event_type=event_type
+                                        )
+                                    )
+                                )
+
+                                body = f"{question.answer_desc}"
+
+                                updates.append(
+                                    Update(
+                                        type=update['type'],
+                                        object=UpdateObject(
+                                            id=update['object']['message']['id'],
+                                            user_id=from_id,
+                                            peer_id=peer_id,
+                                            body=body,
+                                            event_type="get_answer"
+                                        )
                                     )
                                 )
 
                                 if 6 in (game.players_score, game.bot_score):
+                                    event_type = "finished"
                                     if game.players_score == 6:
                                         body = "%0A%0A🥳 Поздравляю! Вы победили!"
                                     elif game.bot_score == 6:
@@ -248,13 +271,15 @@ class VkApiAccessor(BaseAccessor):
                                     await self.app.store.game.finish_game(peer_id)
 
                                 else:
+                                    event_type = "get_question"
                                     question = await self.app.store.game.get_question_for_game(
                                         vk_chat_id=peer_id
                                     )
-                                    body = f"❓ Внимание! Вопрос: {question.title}%0A%0A" \
-                                           f"❗ У вас есть 1 минута на обсуждение и 30 секунд на ответ." \
-                                           f"Отвечает игрок, которого выберет капитан%0A%0A" \
-                                           f"💬 Формат ответа: /answer <ответ>"
+                                    body = f"{question.title}"
+                                    author = await self.app.store.game.get_author(question)
+                                    if author:
+                                        info = (await self.app.store.vk_api.get_users_info(author.vk_id))[0]
+                                        body += f"|{info['first_name']} {info['last_name']}"
 
                         # Если была нажата кнопка "Присоединится" или написали /join
                         elif update["object"]["message"].get("payload") is not None and \
@@ -325,7 +350,8 @@ class VkApiAccessor(BaseAccessor):
                         "random_id": random.randint(1, 2 ** 32),
                         "message": message.text,
                         "access_token": self.app.config.bot.token,
-                        "keyboard": str(json.dumps(KeyboardSchema().dump(message.keyboard)))
+                        "keyboard": str(json.dumps(KeyboardSchema().dump(message.keyboard))),
+                        "attachment": message.attachment
                     },
                 )
         ) as resp:
@@ -345,3 +371,60 @@ class VkApiAccessor(BaseAccessor):
         ) as resp:
             data = await resp.json()
             return data["response"]
+
+    async def get_messages_upload_server(self, peer_id: int) -> str:
+        async with self.session.get(
+                self._build_query(
+                    API_PATH,
+                    "photos.getMessagesUploadServer",
+                    params={
+                        "access_token": self.app.config.bot.token,
+                        "peer_id": peer_id
+                    }
+                )
+        ) as resp:
+            data = await resp.json()
+            return data["response"]["upload_url"]
+
+    async def save_message_photo(self, photo: BytesIO, server: str, hash_: str) -> None:
+        async with self.session.get(
+                self._build_query(
+                    API_PATH,
+                    "photos.saveMessagesPhoto",
+                    params={
+                        "access_token": self.app.config.bot.token,
+                        "photo": photo,
+                        "server": server,
+                        "hash": hash_
+                    }
+                )
+        ) as resp:
+            data = await resp.json()
+            return data["response"][0]
+
+    async def get_photo(self, update: Update, image_path: str) -> dict:
+        server = await self.app.store.vk_api.get_messages_upload_server(update.object.peer_id)
+        body = update.object.body.split("|")
+        question = body[0]
+        author_name = None
+        if len(body) == 2:
+            author_name = body[1]
+        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", body, question, author_name)
+        response = requests.post(
+            url=server,
+            files={"file": (
+                "file.png", create_image(
+                    image_path=image_path,
+                    text=question,
+                    author_name=author_name
+                )
+            )}
+        ).json()
+
+        photo = await self.app.store.vk_api.save_message_photo(
+            server=response["server"],
+            photo=response["photo"],
+            hash_=response["hash"]
+        )
+
+        return photo

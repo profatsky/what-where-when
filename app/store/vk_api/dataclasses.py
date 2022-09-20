@@ -24,6 +24,7 @@ class Message:
     peer_id: int
     text: str
     keyboard: Keyboard | None
+    attachment: str | None
 
 
 @dataclass

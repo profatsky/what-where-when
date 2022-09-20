@@ -334,3 +334,8 @@ class GameAccessor(BaseAccessor):
                 )
                 .values(is_finished=True)
             )
+
+    async def get_author(self, question: Question) -> User | None:
+        if question.author_id:
+            user: User = (await self.get_users_list(user_id=question.author_id))[0]
+            return user
